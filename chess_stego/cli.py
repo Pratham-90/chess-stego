@@ -2,6 +2,8 @@
 
     python -m chess_stego encode secret.txt -o games.pgn
     python -m chess_stego decode games.pgn -o recovered.txt
+
+Add `--ranker engine --k 3` to both commands for natural-looking games.
 """
 import argparse
 import getpass
@@ -10,7 +12,7 @@ import sys
 from pathlib import Path
 
 from . import codec, crypto
-from .rankers import UciRanker
+from .rankers import DEFAULT_K, DEFAULT_NODES, EngineTopKRanker, UciRanker
 
 
 def read_password(confirm: bool) -> str:
@@ -27,7 +29,20 @@ def read_password(confirm: bool) -> str:
 
 
 def make_ranker(args):
+    if args.ranker == "engine":
+        return EngineTopKRanker(k=args.k, nodes=args.nodes)
     return UciRanker()
+
+
+def add_ranker_flags(parser) -> None:
+    # These settings are NOT stored in the PGN (that would give the game away),
+    # so decode must be given exactly the same values as encode.
+    parser.add_argument("--ranker", choices=["uci", "engine"], default="uci",
+                        help="uci: any legal move; engine: only Stockfish's top-k moves")
+    parser.add_argument("--k", type=int, default=DEFAULT_K,
+                        help="engine ranker: choose among the k best moves")
+    parser.add_argument("--nodes", type=int, default=DEFAULT_NODES,
+                        help="engine ranker: positions Stockfish searches per move")
 
 
 def cmd_encode(args) -> None:
@@ -67,17 +82,19 @@ def main(argv=None) -> int:
     enc.add_argument("-o", "--output", default="games.pgn", help="PGN file to write")
     enc.add_argument("--max-plies", type=int, default=codec.MAX_PLIES,
                      help="start a new game after this many half-moves")
+    add_ranker_flags(enc)
     enc.set_defaults(func=cmd_encode)
 
     dec = sub.add_parser("decode", help="recover a file from chess games")
     dec.add_argument("input", help="PGN file produced by encode")
     dec.add_argument("-o", "--output", required=True, help="where to write the recovered file")
+    add_ranker_flags(dec)
     dec.set_defaults(func=cmd_decode)
 
     args = parser.parse_args(argv)
     try:
         args.func(args)
-    except (codec.DecodeError, crypto.DecryptionError, OSError) as err:
+    except (codec.DecodeError, crypto.DecryptionError, OSError) as err:  # incl. Stockfish not found
         print(f"error: {err}", file=sys.stderr)
         return 1
     return 0

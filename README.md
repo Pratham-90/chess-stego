@@ -29,8 +29,31 @@ average number of bits each move carries.
 The password is always typed at a hidden prompt, never passed as an argument.
 For scripts you can set the environment variable `CHESS_STEGO_PASSWORD` instead.
 
+## Natural-looking games (engine mode)
+
+By default any legal move can be played, so the games look like nonsense. With
+`--ranker engine` only Stockfish's `k` best moves are used, which looks far more
+like real chess but needs more moves per byte:
+
+```bash
+python -m chess_stego encode secret.txt -o games.pgn --ranker engine --k 3
+python -m chess_stego decode games.pgn -o recovered.txt --ranker engine --k 3
+```
+
+- **Decode must use the same `--ranker`, `--k` and `--nodes` as encode, and the
+  same Stockfish version** (this project was built and tested with Stockfish 19).
+  The settings are deliberately not written into the PGN.
+- Stockfish is found via the `STOCKFISH_PATH` environment variable, then your
+  `PATH`, then a `tools/` folder inside the project. Get it from
+  <https://stockfishchess.org/download/> (or `brew install stockfish` /
+  `apt install stockfish`) and unpack it into `tools/`.
+- Engine mode is slow: about 14 ms per move, i.e. one to two minutes per KB in each direction.
+
+See [analysis/capacity.md](analysis/capacity.md) for bits per move and timings.
+
 ## Tests
 
 ```bash
-python -m pytest
+python -m pytest                      # everything (engine tests take several minutes)
+python -m pytest tests/test_stage1.py # fast: no Stockfish needed
 ```
