@@ -1,0 +1,11 @@
+# Core (Stage 1 + 2)
+chess
+cryptography
+pytest
+
+# Stage 3 analysis
+numpy
+pandas
+scikit-learn
+matplotlib
+zstandard
