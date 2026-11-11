@@ -3,7 +3,9 @@
 **Short answer: yes.** Games made from all legal moves are spotted essentially
 100% of the time. Engine-guided games look far more like chess, but a simple
 detector still catches about 94% of them. Even when the detector is only
-allowed to look at move quality, it is right about 86% of the time.
+allowed to look at move quality, it is right about 86% of the time. The
+stretch-goal "human-matched" games (last section) bring this down to about 77%:
+clearly better, still not invisible.
 
 ## What was compared
 
@@ -27,6 +29,9 @@ Stockfish 19 at depth 10, and each game was boiled down to nine numbers
   (checkmate, forced draw such as stalemate, or neither).
 
 Scripts: `make_dataset.py` -> `features.py` -> `detect.py`.
+
+The plots below also show a fifth set, "Human-matched". It belongs to the
+stretch goal and is explained in the last section.
 
 ## Average feature values
 
@@ -120,3 +125,63 @@ would mean "indistinguishable".
   who sees all of them together can be even more confident.
 - 300 games per set, analysed at a shallow depth 10: the percentages are good
   to within a few points, not to the decimal.
+
+## Stretch goal: matching how humans choose
+
+**Idea.** Plain top-k treats the engine's k best moves as equally likely. Real
+players do not: measured on the Lichess sample with the encoder's own ranker
+(`human_ranks.py`, full table in [human_ranks.md](human_ranks.md)), they play
+the engine's
+
+| 1st choice | 2nd | 3rd | 4th | 5th | 6th | 7th | 8th | something else |
+|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| 31.3% | 15.1% | 10.9% | 7.1% | 5.3% | 4.2% | 3.6% | 2.9% | 19.8% |
+
+The `HumanLikeRanker` uses the top 8 moves with weights `[11, 5, 4, 2, 2, 1, 1, 1]`
+(these ratios, rounded), so the best move is picked 11 times as often as the
+8th-best. The codec does this with weighted digits, a small version of
+arithmetic coding (see `take_weighted_digit` in `codec.py`). Likely moves carry
+less data and rare moves carry more; the average works out to about 2.4 bits per
+move (top-4 carries 1.9).
+
+Because the decoder never needs to know the game-length limit, the encoder is
+also free to end each game at a length drawn at random from the real games.
+This removes the "too long, always played to mate" tell at no cost.
+
+**Result (300 games, same detector):**
+
+| | Real (Lichess) | Engine top-4 | Human-matched |
+|:--|--:|--:|--:|
+| Average centipawn loss | 81.1 | 91.8 | 112.0 |
+| Blunder rate | 10.1% | 12.6% | 15.6% |
+| Played the engine's best move | 35.1% | 23.0% | 26.0% |
+| Played a top-3 engine move | 62.5% | 56.5% | 55.5% |
+| Game length (half-moves) | 76.2 | 121.5 | 70.1 |
+| Ends in checkmate | 29.7% | 86.3% | 22.0% |
+
+| Generated set | Features | Model | Accuracy | ROC-AUC |
+|:--|:--|:--|--:|--:|
+| Human-matched | all features | logistic regression | 76.8% | 0.848 |
+| Human-matched | all features | random forest | 75.5% | 0.831 |
+| Human-matched | move quality only | logistic regression | 76.7% | 0.847 |
+| Human-matched | move quality only | random forest | 75.7% | 0.826 |
+
+**What it means.**
+
+- Detection falls from about 94% to about 77%, and the length/ending features
+  no longer help the detector at all (same accuracy with and without them).
+  Both changes did what they were meant to do.
+- It is still well above 50%. The generated games are now somewhat *weaker*
+  than the human sample (ACPL 112 vs 81) and still find the best move less
+  often (26% vs 35%). Two likely reasons: the weights were measured against the
+  encoder's fast 2000-node ranking while the detector judges with a deeper
+  search, and a fixed set of weights ignores context. A human who plays the
+  "5th best" move in a quiet position is not the same as one who plays the 5th
+  best move when only one move avoids losing a queen; the encoder cannot tell
+  these apart.
+- All generated games still share a single skill level, while real players
+  differ widely.
+
+The obvious next experiment is to make the weights depend on the position (for
+example, on how much worse each candidate is than the best move) and to vary
+the "skill" from game to game.

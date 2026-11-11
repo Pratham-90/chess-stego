@@ -1,6 +1,7 @@
 """Describe every game by a few numbers a detector could look at.
 
-    python analysis/features.py        (writes analysis/data/features.csv)
+    python analysis/features.py              (all sets; writes analysis/data/features.csv)
+    python analysis/features.py gen_human    (only the named sets; other rows are kept)
 
 Every position is analysed with Stockfish at a fixed depth. From that we get,
 per game: how much each move "lost" compared with the best move (centipawn
@@ -22,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from chess_stego.rankers import find_stockfish
 
 DATA = Path(__file__).resolve().parent / "data"
-SETS = ["real", "gen_uci", "gen_k2", "gen_k4"]
+SETS = ["real", "gen_uci", "gen_k2", "gen_k4", "gen_human"]
 DEPTH = 10
 MULTIPV = 3
 SCORE_CAP = 1000   # treat anything beyond +-10 pawns (including mates) as +-10 pawns
@@ -88,8 +89,9 @@ def analyse_chunk(job: tuple[str, list[str]]) -> list[dict]:
 
 
 def main() -> None:
+    names = sys.argv[1:] or SETS
     jobs = []
-    for name in SETS:
+    for name in names:
         games = read_games(DATA / f"{name}.pgn")
         jobs += [(name, games[i:i + CHUNK]) for i in range(0, len(games), CHUNK)]
     rows = []
@@ -98,7 +100,12 @@ def main() -> None:
             rows += chunk
             print(f"\ranalysed {done}/{len(jobs)} chunks", end="", flush=True)
     frame = pd.DataFrame(rows)
-    frame.to_csv(DATA / "features.csv", index=False)
+    target = DATA / "features.csv"
+    if sys.argv[1:] and target.exists():
+        # Keep the rows of the sets we did not re-analyse.
+        old = pd.read_csv(target)
+        frame = pd.concat([old[~old["set"].isin(names)], frame])
+    frame.to_csv(target, index=False)
     print("\n", frame.groupby("set").mean().round(3).T)
 
 

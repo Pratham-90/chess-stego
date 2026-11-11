@@ -47,14 +47,18 @@ python -m chess_stego decode games.pgn -o recovered.txt --ranker engine --k 3
   `PATH`, then a `tools/` folder inside the project. Get it from
   <https://stockfishchess.org/download/> (or `brew install stockfish` /
   `apt install stockfish`) and unpack it into `tools/`.
-- Engine mode is slow: about 14 ms per move, i.e. one to two minutes per KB in each direction.
+- Engine mode is slow: 10 to 15 ms per move, i.e. one to two minutes per KB in each direction.
+
+There is also `--ranker human`: it uses Stockfish's top 8 moves but picks them
+about as often as real players do (best move most often). It hides more data
+per move than `--k 4` and was the hardest mode to detect in our tests.
 
 See [analysis/capacity.md](analysis/capacity.md) for bits per move and timings.
 
 ## Tests
 
 ```bash
-python -m pytest                      # everything (engine tests take 10+ minutes)
+python -m pytest                      # everything (engine tests take about 25 minutes)
 python -m pytest tests/test_stage1.py # fast: no Stockfish needed
 ```
 
@@ -66,6 +70,7 @@ games from Lichess and train a detector. Results and plots are in
 
 ```bash
 python analysis/make_dataset.py   # sample real games, generate stego games (~10 min)
-python analysis/features.py       # analyse every move with Stockfish (~15 min)
+python analysis/features.py       # analyse every move with Stockfish (~20 min)
 python analysis/detect.py         # plots + classifiers (seconds)
+python analysis/human_ranks.py    # optional: which engine choice do humans play?
 ```

@@ -47,24 +47,66 @@ def int_to_bytes(n: int) -> bytes:
     return raw[1:]
 
 
+# ---------- weighted digits (stretch goal) ----------
+#
+# Plain mixed radix makes every candidate move equally likely. To make some
+# moves more likely than others we give each option a weight, e.g. [5, 2, 1]:
+# picture 5 + 2 + 1 = 8 numbered slots, where the last option owns slot 0, the
+# middle one slots 1-2 and the first one slots 3-7. `n % 8` lands in one slot
+# and so picks an option; options owning more slots get picked more often.
+# Likely options use up less of n (they carry less information), which is the
+# idea behind arithmetic coding / "asymmetric numeral systems" (rANS).
+# With all weights equal to 1 this is plain mixed radix again.
+
+def take_weighted_digit(n: int, weights: list[int]) -> tuple[int, int]:
+    """Remove one weighted digit from n. Returns (what is left of n, digit)."""
+    rest, slot = divmod(n, sum(weights))
+    start = 0
+    for digit in reversed(range(len(weights))):  # the last option owns slot 0
+        if slot < start + weights[digit]:
+            # Keep the position inside the option's slots: that is leftover
+            # information which must not be thrown away.
+            return rest * weights[digit] + (slot - start), digit
+        start += weights[digit]
+    raise AssertionError("unreachable: slot is always below sum(weights)")
+
+
+def put_weighted_digit(n: int, digit: int, weights: list[int]) -> int:
+    """Exact inverse of take_weighted_digit."""
+    start = sum(weights[digit + 1:])
+    rest, offset = divmod(n, weights[digit])
+    return rest * sum(weights) + start + offset
+
+
 # ---------- integer -> games ----------
 
-def encode(data: bytes, ranker, max_plies: int = MAX_PLIES) -> tuple[list[chess.Board], Stats]:
-    """Turn bytes into a list of played-out boards (one per game)."""
+def encode(data: bytes, ranker, max_plies=MAX_PLIES) -> tuple[list[chess.Board], Stats]:
+    """Turn bytes into a list of played-out boards (one per game).
+
+    `max_plies` is a number, or a function that returns the length limit for
+    the next game (used to give games varied, human-like lengths). The decoder
+    never needs it: it just replays whatever games it is given.
+    """
+    next_limit = max_plies if callable(max_plies) else (lambda: max_plies)
     n = bytes_to_int(data)
     games: list[chess.Board] = []
-    board = chess.Board()
+    board, limit = chess.Board(), next_limit()
     moves, bits = 0, 0.0
     while n > 0:
         options = ranker.ordered_moves(board)
-        # Peel off the lowest digit of n in base len(options).
-        n, digit = divmod(n, len(options))
+        weights = ranker.weights(len(options))
+        if weights is None:
+            # Peel off the lowest digit of n in base len(options).
+            n, digit = divmod(n, len(options))
+            bits += math.log2(len(options))
+        else:
+            n, digit = take_weighted_digit(n, weights)
+            bits += math.log2(sum(weights) / weights[digit])
         board.push(options[digit])
         moves += 1
-        bits += math.log2(len(options))
-        if board.is_game_over() or board.ply() >= max_plies:
+        if board.is_game_over() or board.ply() >= limit:
             games.append(board)
-            board = chess.Board()
+            board, limit = chess.Board(), next_limit()
     if board.move_stack:  # the last, unfinished game
         games.append(board)
     return games, Stats(len(games), moves, bits)
@@ -74,7 +116,7 @@ def encode(data: bytes, ranker, max_plies: int = MAX_PLIES) -> tuple[list[chess.
 
 def decode(pgn_text: str, ranker) -> bytes:
     """Replay every game and rebuild the bytes."""
-    digits: list[tuple[int, int]] = []  # (digit, radix) for every move, in order
+    digits = []  # (digit, radix, weights) for every move, in order
     pgn = io.StringIO(pgn_text)
     while (game := chess.pgn.read_game(pgn)) is not None:
         if game.errors:
@@ -87,14 +129,17 @@ def decode(pgn_text: str, ranker) -> bytes:
                     f"move {board.san(move)} is not a candidate move here "
                     "(wrong ranker settings, or not a chess-stego game)"
                 )
-            digits.append((options.index(move), len(options)))
+            digits.append((options.index(move), len(options), ranker.weights(len(options))))
             board.push(move)
     if not digits:
         raise DecodeError("no games found in the PGN")
     # The first move holds the lowest digit, so rebuild from the last move back.
     n = 0
-    for digit, radix in reversed(digits):
-        n = n * radix + digit
+    for digit, radix, weights in reversed(digits):
+        if weights is None:
+            n = n * radix + digit
+        else:
+            n = put_weighted_digit(n, digit, weights)
     return int_to_bytes(n)
 
 

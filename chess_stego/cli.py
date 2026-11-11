@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from . import codec, crypto
-from .rankers import DEFAULT_K, DEFAULT_NODES, EngineTopKRanker, UciRanker
+from .rankers import DEFAULT_K, DEFAULT_NODES, EngineTopKRanker, HumanLikeRanker, UciRanker
 
 
 def read_password(confirm: bool) -> str:
@@ -31,18 +31,21 @@ def read_password(confirm: bool) -> str:
 def make_ranker(args):
     if args.ranker == "engine":
         return EngineTopKRanker(k=args.k, nodes=args.nodes)
+    if args.ranker == "human":
+        return HumanLikeRanker(nodes=args.nodes)
     return UciRanker()
 
 
 def add_ranker_flags(parser) -> None:
     # These settings are NOT stored in the PGN (that would give the game away),
     # so decode must be given exactly the same values as encode.
-    parser.add_argument("--ranker", choices=["uci", "engine"], default="uci",
-                        help="uci: any legal move; engine: only Stockfish's top-k moves")
+    parser.add_argument("--ranker", choices=["uci", "engine", "human"], default="uci",
+                        help="uci: any legal move; engine: only Stockfish's top-k moves; "
+                             "human: top-8 moves picked as often as humans pick them")
     parser.add_argument("--k", type=int, default=DEFAULT_K,
                         help="engine ranker: choose among the k best moves")
     parser.add_argument("--nodes", type=int, default=DEFAULT_NODES,
-                        help="engine ranker: positions Stockfish searches per move")
+                        help="engine/human ranker: positions Stockfish searches per move")
 
 
 def cmd_encode(args) -> None:

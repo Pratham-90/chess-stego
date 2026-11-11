@@ -19,7 +19,7 @@ Choices made while building, each with a one-line reason.
 ## Stage 2
 - **Stockfish 19** (official `stockfish-windows-x86-64-universal.exe` from the Stockfish GitHub release `sf_19`, reports `id name Stockfish 19`), unpacked into `tools/` — downloading the official zip needs no admin rights, unlike a system install. `tools/` is git-ignored (80 MB).
 - **Stockfish lookup order: `STOCKFISH_PATH`, then `PATH`, then `tools/`** — works for a system install on macOS/Linux and for the local copy on Windows.
-- **Defaults `--k 3`, `--nodes 2000`, `Hash = 16 MB`, `Threads = 1`** — 2000 nodes already plays far better than a typical human and costs about 14 ms per move; more nodes only make encoding slower.
+- **Defaults `--k 3`, `--nodes 2000`, `Hash = 16 MB`, `Threads = 1`** — 2000 nodes is enough for sensible-looking moves and costs 10 to 15 ms per move; more nodes make encoding slower (and, as Stage 3 showed, stronger play is not what the games were missing).
 - **`--ranker` defaults to `uci`** — the quick start then works without Stockfish; engine mode is opt-in.
 - **Positions with one legal move skip the engine** — the answer is forced, so there is nothing to rank (radix 1).
 - **Safety net in `EngineTopKRanker`** — if Stockfish ever returned fewer than k distinct moves, the list is topped up with legal moves in UCI order, so the radix is always exactly `min(k, legal moves)`.
@@ -37,3 +37,13 @@ Choices made while building, each with a one-line reason.
 - **Detector reported twice: all features, and move-quality features only** — game length and ending are easy tells; the second run shows what remains once those are ignored.
 - **Plots: box plots and small-multiple histograms with one fixed colour per set** — four overlapping histograms in one panel were unreadable.
 - **Datasets (`*.pgn`, `features.csv`) are committed; the 17 MB Lichess download is not** — the small files make the results reproducible without re-running Stockfish.
+
+## Stretch goal (human-matched move choice)
+- **Weighted digits instead of a full arithmetic coder** — the message is already one big integer, so a weighted choice only needs a slightly smarter `divmod` (`take_weighted_digit` / `put_weighted_digit`, the same maths as rANS). About 15 lines, and with equal weights it reduces to the Stage 1 scheme.
+- **Rankers gained a `weights(count)` method; `None` means uniform** — keeps the simple Stage 1/2 path (`divmod`) visible in the codec, with the weighted path as a clearly separate branch.
+- **Top 8 moves with weights `[11, 5, 4, 2, 2, 1, 1, 1]`** — the measured human frequencies of engine ranks 1-8 relative to rank 8, rounded. Moves outside the top 8 (20% of human moves) are not imitated.
+- **The rarest option must have weight 1, and it owns slot 0** — otherwise a small leftover number could keep choosing the same option without shrinking, and encoding would never finish. Covered by a test.
+- **Human frequencies are measured with the encoder's own ranker (2000 nodes, MultiPV 8)** — the weights have to describe the list the encoder actually chooses from.
+- **`encode(max_plies=...)` also accepts a function** — used to draw each game's length limit from the real games' lengths. Encoder-only: the decoder replays whatever it is given. Used in the analysis only; the CLI keeps the plain `--max-plies` number.
+- **CLI: `--ranker human`** — same as `engine` but with the built-in weights (`--k` is ignored).
+- **Weights were not tuned against the detector** — the 77% result is the honest first attempt; tuning until the detector fails would mostly overfit this particular detector.

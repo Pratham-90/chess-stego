@@ -3,6 +3,9 @@
 A ranker turns a position into an ordered list of candidate moves. The encoder
 plays `moves[digit]`; the decoder finds the played move's index in the same
 list. So the one hard rule is: the same position must ALWAYS give the same list.
+
+`weights(count)` says how likely each of the `count` candidates should be.
+None means "all equally likely" (plain mixed radix).
 """
 import os
 import shutil
@@ -13,6 +16,11 @@ import chess.engine
 
 DEFAULT_K = 3
 DEFAULT_NODES = 2000
+
+# How much more often real players pick the engine's 1st, 2nd, ... 8th choice
+# than its 8th choice (rounded). Measured on Lichess games by
+# analysis/human_ranks.py with this file's own engine settings.
+HUMAN_WEIGHTS = [11, 5, 4, 2, 2, 1, 1, 1]
 
 
 def uci_sorted(moves) -> list[chess.Move]:
@@ -75,8 +83,25 @@ class EngineTopKRanker:
                 moves.append(move)
         return moves
 
+    def weights(self, count: int) -> list[int] | None:
+        return None
+
     def close(self) -> None:
         self.engine.quit()
+
+
+class HumanLikeRanker(EngineTopKRanker):
+    """Stretch goal: top-8 engine moves, but picked as often as humans pick them.
+
+    Instead of treating the candidates as equally likely, the best move is
+    chosen 11 times as often as the 8th-best, and so on (see HUMAN_WEIGHTS).
+    """
+
+    def __init__(self, nodes: int = DEFAULT_NODES, path: str | None = None):
+        super().__init__(k=len(HUMAN_WEIGHTS), nodes=nodes, path=path)
+
+    def weights(self, count: int) -> list[int] | None:
+        return HUMAN_WEIGHTS[:count]  # fewer legal moves -> use the first few weights
 
 
 class UciRanker:
@@ -84,6 +109,9 @@ class UciRanker:
 
     def ordered_moves(self, board: chess.Board) -> list[chess.Move]:
         return uci_sorted(board.legal_moves)
+
+    def weights(self, count: int) -> list[int] | None:
+        return None
 
     def close(self) -> None:
         pass
