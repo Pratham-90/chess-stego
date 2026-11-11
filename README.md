@@ -54,6 +54,18 @@ See [analysis/capacity.md](analysis/capacity.md) for bits per move and timings.
 ## Tests
 
 ```bash
-python -m pytest                      # everything (engine tests take several minutes)
+python -m pytest                      # everything (engine tests take 10+ minutes)
 python -m pytest tests/test_stage1.py # fast: no Stockfish needed
+```
+
+## Detection experiment
+
+`analysis/` holds the scripts that compare generated games with real human
+games from Lichess and train a detector. Results and plots are in
+[analysis/RESULTS.md](analysis/RESULTS.md). To re-run everything:
+
+```bash
+python analysis/make_dataset.py   # sample real games, generate stego games (~10 min)
+python analysis/features.py       # analyse every move with Stockfish (~15 min)
+python analysis/detect.py         # plots + classifiers (seconds)
 ```

@@ -25,3 +25,15 @@ Choices made while building, each with a one-line reason.
 - **Safety net in `EngineTopKRanker`** — if Stockfish ever returned fewer than k distinct moves, the list is topped up with legal moves in UCI order, so the radix is always exactly `min(k, legal moves)`.
 - **Engine tests use the small payloads plus 1 KB; the 50 KB engine round trip only runs with `RUN_SLOW=1`** — 50 KB at k = 2 is about 420,000 engine searches each way (hours). The codec is identical for every ranker and 50 KB is already covered in Stage 1.
 - **Capacity is measured on 1 KB of random bytes** — ciphertext is indistinguishable from random bytes, and 1 KB keeps the engine runs to a few minutes.
+
+## Stage 3
+- **Real games: Lichess `2013-01` (17 MB, 121k games)** — the smallest monthly file; read as a stream with `zstandard`, never unpacked to disk.
+- **Sampling: parse only a random 0.6% of games (fixed seed), keep those with >= 40 plies, then pick 300** — python-chess can skip a game's moves after reading its headers, so the whole file is scanned in 8 seconds.
+- **Generated sets are made by 10 workers, 30 complete games each** — ten independent hidden messages per set, and ten Stockfish processes in parallel; the short final game of each message is dropped so every game is a full one.
+- **Features use Stockfish at depth 10, MultiPV 3, scores capped at +-1000 cp** — one search per position gives both the top-3 moves and the evaluation; capping stops mate scores from dominating averages.
+- **Centipawn loss = (best eval before the move) - (eval after the move)**, never below 0 — the standard definition, and it needs no extra searches.
+- **"How the game ended" is judged from the final board position, not the Result header** — a detector cannot trust headers we write ourselves; resignations and time-outs therefore count as "neither checkmate nor forced draw".
+- **8 parallel workers for analysis** — 14 Stockfish processes at once ran out of memory (each needs ~300 MB) and crashed with "engine process died".
+- **Detector reported twice: all features, and move-quality features only** — game length and ending are easy tells; the second run shows what remains once those are ignored.
+- **Plots: box plots and small-multiple histograms with one fixed colour per set** — four overlapping histograms in one panel were unreadable.
+- **Datasets (`*.pgn`, `features.csv`) are committed; the 17 MB Lichess download is not** — the small files make the results reproducible without re-running Stockfish.
