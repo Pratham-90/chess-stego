@@ -67,4 +67,5 @@ Choices made while building, each with a one-line reason.
 - **Size limits: 100 KB (random), 4 KB (natural)** — keeps any job under a few minutes; the big-number arithmetic is quadratic in the input size.
 - **Recovered files have no name** — the format is byte-compatible with the CLI, which stores only the file's contents. The page guesses the type from the first bytes (text, PNG, JPEG, GIF, PDF, ZIP).
 - **No password confirmation field; a "Show" button instead** — one field is quicker and the user can check what they typed.
-- **Deployment prepared, not done** — a GitHub Pages workflow is included; publishing needs the owner's GitHub account.
+- **Published with GitHub Pages from a public repository** (https://pratham-90.github.io/chess-stego/) — free static hosting; the workflow uploads only `web/`. Free-plan Pages requires the repository to be public.
+- **Commits use the owner's GitHub no-reply address** — the six commits were rewritten before the first push so a personal email address is not exposed in a public history; the repository's local `user.email` is set to the same address.

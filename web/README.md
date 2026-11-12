@@ -1,5 +1,7 @@
 # Chess Stego: the website
 
+**Live at <https://pratham-90.github.io/chess-stego/>**
+
 The same tool as the command line, running entirely in the browser. Open the
 page, type a message (or pick a file), choose a password, and get chess games
 to send to someone. They open the same page, paste the games, type the
@@ -73,10 +75,10 @@ the natural style decodes in a separate process.
 
 The folder is a plain static site, so any static host works.
 
-**GitHub Pages** (free): push this repository to GitHub, then in the
-repository's *Settings -> Pages* set *Source* to **GitHub Actions**. The
-workflow in `.github/workflows/pages.yml` publishes the `web/` folder on every
-push to `main`.
+**GitHub Pages** (free, and what this project uses): the workflow in
+`.github/workflows/pages.yml` publishes the `web/` folder on every push to
+`main` that touches it. In a fresh copy of the repository, first set
+*Settings -> Pages -> Source* to **GitHub Actions**.
 
 **Netlify, Cloudflare Pages, Vercel:** set the publish directory to `web` and
 leave the build command empty.

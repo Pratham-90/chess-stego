@@ -31,9 +31,9 @@ For scripts you can set the environment variable `CHESS_STEGO_PASSWORD` instead.
 
 ## Website
 
-`web/` holds a browser version with a 3D board that shows how each move hides
+**Live at <https://pratham-90.github.io/chess-stego/>.** `web/` holds a browser version with a 3D board that shows how each move hides
 a number. It needs no install and uploads nothing: everything runs in the
-visitor's tab. Try it locally:
+visitor's tab. To run it locally:
 
 ```bash
 python -m http.server 8123 --directory web
