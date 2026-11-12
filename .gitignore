@@ -6,3 +6,7 @@ __pycache__/
 # Stockfish binary and downloaded Lichess data are large; fetched by scripts
 tools/
 analysis/data/*.zst
+
+# Website: npm packages are only needed to rebuild web/vendor/ and run tests
+web/node_modules/
+.claude/

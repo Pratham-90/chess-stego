@@ -29,6 +29,20 @@ average number of bits each move carries.
 The password is always typed at a hidden prompt, never passed as an argument.
 For scripts you can set the environment variable `CHESS_STEGO_PASSWORD` instead.
 
+## Website
+
+`web/` holds a browser version with a 3D board that shows how each move hides
+a number. It needs no install and uploads nothing: everything runs in the
+visitor's tab. Try it locally:
+
+```bash
+python -m http.server 8123 --directory web
+```
+
+Then open <http://localhost:8123>. Games made in its "random moves" style and
+by the CLI's default mode are interchangeable. See [web/README.md](web/README.md)
+for how it works and how to put it online.
+
 ## Natural-looking games (engine mode)
 
 By default any legal move can be played, so the games look like nonsense. With
@@ -60,6 +74,7 @@ See [analysis/capacity.md](analysis/capacity.md) for bits per move and timings.
 ```bash
 python -m pytest                      # everything (engine tests take about 25 minutes)
 python -m pytest tests/test_stage1.py # fast: no Stockfish needed
+python -m pytest tests/test_web.py    # website code vs Python (needs Node.js, about 1 minute)
 ```
 
 ## Detection experiment

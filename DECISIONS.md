@@ -47,3 +47,24 @@ Choices made while building, each with a one-line reason.
 - **`encode(max_plies=...)` also accepts a function** — used to draw each game's length limit from the real games' lengths. Encoder-only: the decoder replays whatever it is given. Used in the analysis only; the CLI keeps the plain `--max-plies` number.
 - **CLI: `--ranker human`** — same as `engine` but with the built-in weights (`--k` is ignored).
 - **Weights were not tuned against the detector** — the 77% result is the honest first attempt; tuning until the detector fails would mostly overfit this particular detector.
+
+## Website (`web/`)
+- **Runs entirely in the browser, no server** — a tool for hiding secrets should not ask people to upload the secret and the password; it also makes hosting free (static files).
+- **JavaScript port instead of running the Python in the browser** — Pyodide plus python-chess would be a multi-megabyte download and slow to start; the codec is a few hundred lines.
+- **Plain ES modules, no framework, no build step** — the files in `web/` are what the browser loads, so they can be read top to bottom. Libraries are bundled once into `web/vendor/` by `build-vendor.mjs` (esbuild).
+- **chess.js 1.4.0 for rules, calling its internal move generator** — its public `moves({verbose: true})` is about 30x slower (it builds a FEN for every move). The version is pinned and vendored, and `tests/test_web.py` checks the result against python-chess.
+- **Game-over rules re-implemented to match python-chess** (75-move rule, fivefold repetition, its insufficient-material rule) — chess.js uses the 50-move rule and threefold repetition, which would end games at different places. Only the encoder depends on this, but identical games make the two versions testable against each other.
+- **scrypt from @noble/hashes, AES-GCM from the browser's Web Crypto** — browsers have no built-in scrypt; noble is audited and tiny. Same parameters and byte layout as `crypto.py`.
+- **Heavy work in a Web Worker** — key stretching and encoding would freeze the page and the 3D board otherwise. Cancelling a job terminates the worker and starts a new one.
+- **three.js board with pieces generated in code** (lathe profiles, an extruded knight) — no 3D model or image files to license or download.
+- **Content-Security-Policy in the page** — only same-origin files may load, and nothing can be sent to another server; fonts and libraries are local for the same reason.
+- **Two styles: "random" (= CLI default) and "natural" (= CLI `--ranker human` idea)** — the human-weighted top-8 ranker beat plain top-k on both capacity and detection in Stage 3, so the site offers only that engine mode.
+- **Natural style uses the 1.8 MB "lite" Stockfish 19 WebAssembly build, so it is website-only** — measured: the full-size WASM build gives the same top-4 lists as the desktop Stockfish 19 on 60 of 60 positions (so CLI-compatible engine games are possible), but it is a 99 MB download. The lite build is deterministic across separate runs (tested) but ranks differently.
+- **The engine is sent `position startpos moves ...`, not a FEN** — so it knows the game history (repetitions), like python-chess does.
+- **Reveal tries both styles instead of asking** — the PGN must not say how it was made, and only the right style plus the right password passes the AES-GCM check. Random is tried first because it needs no engine.
+- **Natural games get varied lengths (40 to 150 plies, short ones more often, mean about 76)** — the Stage 3 result showed game length was one of the strongest tells. Encoder-only choice.
+- **Stopped games get a result from the material count** (a side at least 3 points ahead "wins", otherwise a draw) — a drawn result in a position where one side is a queen up looks wrong. The result carries no data.
+- **Size limits: 100 KB (random), 4 KB (natural)** — keeps any job under a few minutes; the big-number arithmetic is quadratic in the input size.
+- **Recovered files have no name** — the format is byte-compatible with the CLI, which stores only the file's contents. The page guesses the type from the first bytes (text, PNG, JPEG, GIF, PDF, ZIP).
+- **No password confirmation field; a "Show" button instead** — one field is quicker and the user can check what they typed.
+- **Deployment prepared, not done** — a GitHub Pages workflow is included; publishing needs the owner's GitHub account.

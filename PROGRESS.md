@@ -8,8 +8,10 @@
 - **Optional stretch** — human rank frequencies (`analysis/human_ranks.md`), weighted digits in the codec, `HumanLikeRanker`, `--ranker human`, human-like game lengths in the dataset, detector re-run (94% -> 77%). Committed.
 - **Final report** — `EXPLANATION.md`. Committed.
 
+- **Website** — `web/`: JavaScript port (crypto, codec, rankers), 3D board that shows which numbered move the data picked, "random" and "natural" (Stockfish in WebAssembly) styles, cross-tests against Python in `tests/test_web.py`, GitHub Pages workflow. Committed.
+
 ## In progress
-- Nothing. The project is complete.
+- Nothing. Not done yet: the site is not published anywhere (needs the owner's GitHub account), and it was only tried in a Chromium-based browser.
 
 ## Possible next steps
 - See "Ideas for next steps" in `EXPLANATION.md`.

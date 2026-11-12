@@ -526,6 +526,8 @@ Stage 2 is obvious at a glance.
 - **Make it faster** by running several engine processes in parallel.
 - **Opening book:** start games from common openings, where many moves are
   "normal", for extra capacity at no cost in realism.
+- **Website: stream the games to the board while they are being made**, and
+  offer the full-size engine as an opt-in download for CLI-compatible games.
 
 ### How to describe this on a resume
 
@@ -535,4 +537,56 @@ Stage 2 is obvious at a glance.
 > deterministic Stockfish move rankings. Evaluated detectability against 300
 > real Lichess games with engine-derived features and scikit-learn classifiers;
 > a human-frequency-matched encoder cut detection accuracy from 94% to 77% at
-> about 2.4 bits per move.
+> about 2.4 bits per move. Ported the pipeline to a serverless web app
+> (WebCrypto, WebAssembly Stockfish, three.js) that is byte-compatible with
+> the CLI.
+
+---
+
+## 9. The website
+
+Added after the report above was written. `web/` is a browser version of the
+tool that anyone can use without installing anything.
+
+**What it does.** The left side has two tabs. *Hide* takes a message or a file
+and a password and gives back chess games (a PGN file). *Reveal* takes the
+games and the password and gives back the message. The right side is a 3D
+board that plays the generated games. Under the board, every candidate move in
+the current position is shown as a numbered chip, and the one the hidden data
+picked is highlighted. This is the mixed-radix idea from section 2, made
+visible: "31 legal moves, the data says 17, so the move is Nf3, which hides
+4.95 bits".
+
+**Nothing is uploaded.** The Python code was rewritten in JavaScript so that
+encryption and encoding run inside the visitor's own browser tab. There is no
+server to trust. A rule in the page (a "Content Security Policy") tells the
+browser to refuse any connection to another server.
+
+**How the JavaScript maps to the Python:**
+
+| Python | JavaScript | Notes |
+|---|---|---|
+| `crypto.py` | `web/js/crypto.js` | same scrypt settings, same byte layout |
+| `codec.py` | `web/js/codec.js` | same maths; Python's big integers become JavaScript `BigInt` |
+| `rankers.py` | `web/js/rankers.js`, `engine.js` | "random" = all legal moves; "natural" = human-weighted top 8 |
+| python-chess | `web/js/rules.js` (wraps chess.js) | must list legal moves in exactly the same order |
+
+Because the format is the same, games made by the website's *random* style and
+by `python -m chess_stego encode` are interchangeable. A test encodes the same
+20 KB in both languages and checks that all 35,000 or so moves are identical.
+
+**The natural style** uses Stockfish compiled to WebAssembly (a way to run
+C++ programs in a browser). The site ships the small 1.8 MB build, which has a
+different neural network from the desktop engine. It therefore ranks moves
+differently, and natural-style games only decode on the website. An
+interesting side result: the full-size WebAssembly build ranked moves exactly
+like the desktop Stockfish 19 on all 60 positions I compared, so a
+CLI-compatible website is possible at the cost of a 99 MB download.
+
+**What was not checked.** The site was tested with automated checks under
+Node.js and by hand in one Chromium-based browser. It has not been tried in
+Firefox or Safari, or on a real phone. How detectable the website's natural
+games are was not measured either: the 77% figure in section 5 belongs to the
+desktop engine.
+
+See [web/README.md](web/README.md) for the file list and how to publish it.

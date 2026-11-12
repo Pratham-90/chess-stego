@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chess Stego: hide a secret in chess games</title>
+  <meta name="description" content="Encrypt a message or file and hide it inside ordinary chess games. Everything runs in your browser.">
+  <!-- This policy lets the page load only its own files, from its own address
+       (the chess engine is fetched that way when first needed). It cannot
+       contact any other server. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app">
+
+  <aside class="panel">
+    <header class="masthead">
+      <p class="wordmark">Chess&nbsp;Stego</p>
+      <button class="link" id="how-open" type="button">How it works</button>
+    </header>
+
+    <h1>Hide a secret <em>inside a game of chess.</em></h1>
+    <p class="lede">Your message is locked with a password, then written out as chess moves.
+      Send the games to a friend. With the password, they turn back into your message.</p>
+
+    <div class="tabs" role="tablist" aria-label="What do you want to do?">
+      <button role="tab" id="tab-hide" aria-selected="true" aria-controls="pane-hide" type="button">Hide</button>
+      <button role="tab" id="tab-reveal" aria-selected="false" aria-controls="pane-reveal" type="button" tabindex="-1">Reveal</button>
+    </div>
+
+    <!-- ============ Hide ============ -->
+    <section id="pane-hide" role="tabpanel" aria-labelledby="tab-hide">
+      <label class="field">
+        <span class="field-label">Secret message</span>
+        <textarea id="hide-text" rows="4" placeholder="Type something only one person should read" spellcheck="false"></textarea>
+      </label>
+      <div class="file-row">
+        <button class="ghost" id="hide-pick" type="button">or choose a file</button>
+        <span class="file-chip" id="hide-file" hidden>
+          <span id="hide-file-name"></span>
+          <button class="chip-x" id="hide-file-clear" type="button" aria-label="Remove file">&times;</button>
+        </span>
+        <span class="estimate" id="hide-estimate"></span>
+        <input id="hide-input" type="file" hidden>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Password</span>
+        <span class="password">
+          <input id="hide-password" type="password" autocomplete="off" placeholder="A long phrase works best">
+          <button class="ghost" type="button" data-toggle="hide-password" aria-pressed="false">Show</button>
+        </span>
+      </label>
+
+      <fieldset class="styles">
+        <legend class="field-label">Style of games</legend>
+        <label class="style">
+          <input type="radio" name="style" value="random" checked>
+          <span><b>Random moves</b> Quick, and fits the most. A chess player would find the games odd.</span>
+        </label>
+        <label class="style">
+          <input type="radio" name="style" value="natural">
+          <span><b>Natural moves</b> A chess engine keeps every move sensible. Slower, so best for short messages.</span>
+        </label>
+      </fieldset>
+
+      <button class="primary" id="hide-go" type="button">Hide it in chess</button>
+      <div class="status-row">
+        <p class="message" id="hide-message" role="status"></p>
+        <button class="link" id="hide-cancel" type="button" hidden>Cancel</button>
+      </div>
+
+      <div class="result" id="hide-result" hidden>
+        <ol class="pipeline" id="hide-pipeline"></ol>
+        <pre class="pgn" id="hide-pgn" tabindex="0" aria-label="Preview of the generated games"></pre>
+        <div class="actions">
+          <button class="primary" id="hide-download" type="button">Download games.pgn</button>
+          <button class="ghost" id="hide-copy" type="button">Copy</button>
+          <button class="ghost" id="hide-try" type="button">Try revealing it</button>
+        </div>
+        <p class="note" id="hide-note"></p>
+      </div>
+    </section>
+
+    <!-- ============ Reveal ============ -->
+    <section id="pane-reveal" role="tabpanel" aria-labelledby="tab-reveal" hidden>
+      <label class="field">
+        <span class="field-label">Chess games (PGN)</span>
+        <textarea id="reveal-text" rows="6" placeholder="Paste the games here" spellcheck="false"></textarea>
+      </label>
+      <div class="file-row">
+        <button class="ghost" id="reveal-pick" type="button">or choose a .pgn file</button>
+        <input id="reveal-input" type="file" accept=".pgn,.txt,text/plain" hidden>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Password</span>
+        <span class="password">
+          <input id="reveal-password" type="password" autocomplete="off" placeholder="The password the sender used">
+          <button class="ghost" type="button" data-toggle="reveal-password" aria-pressed="false">Show</button>
+        </span>
+      </label>
+
+      <button class="primary" id="reveal-go" type="button">Reveal the secret</button>
+      <div class="status-row">
+        <p class="message" id="reveal-message" role="status"></p>
+        <button class="link" id="reveal-cancel" type="button" hidden>Cancel</button>
+      </div>
+
+      <div class="result" id="reveal-result" hidden>
+        <p class="field-label" id="reveal-kind"></p>
+        <pre class="secret" id="reveal-secret" tabindex="0" hidden></pre>
+        <img class="preview" id="reveal-image" alt="The recovered image" hidden>
+        <div class="actions">
+          <button class="primary" id="reveal-download" type="button">Download</button>
+          <button class="ghost" id="reveal-copy" type="button">Copy text</button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="fineprint">
+      <p><strong>Nothing is uploaded.</strong> Locking and encoding happen in this tab.
+        The page can only fetch its own files, never send yours.</p>
+      <p>Random-style games also work with the command-line version.</p>
+    </footer>
+  </aside>
+
+  <section class="stage" aria-label="Chess board">
+    <div class="viewport">
+      <canvas id="board" aria-label="3D chess board showing the current game. Drag to turn it."></canvas>
+      <p class="drag-hint">Drag to turn the board</p>
+    </div>
+
+    <div class="hud">
+      <div class="inspector" id="inspector" aria-live="polite"></div>
+      <div class="rail-wrap">
+        <p class="rail-label" id="rail-label"></p>
+        <div class="rail" id="rail" role="list"></div>
+      </div>
+      <div class="transport">
+        <button class="icon" id="prev-game" type="button" aria-label="Previous game" title="Previous game"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h2v10H3zM13 3v10L6 8z"/></svg></button>
+        <button class="icon" id="step-back" type="button" aria-label="Back one move" title="Back one move"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3v10L4 8z"/></svg></button>
+        <button class="icon play" id="play" type="button" aria-label="Play" data-state="play">
+          <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>
+          <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3h3v10H4zM9 3h3v10H9z"/></svg>
+          <svg class="i-replay" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3a5 5 0 1 0 4.9 6h-1.6A3.5 3.5 0 1 1 8 4.5V7l4-3-4-3z"/></svg>
+        </button>
+        <button class="icon" id="step-forward" type="button" aria-label="Forward one move" title="Forward one move"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3v10l7-5z"/></svg></button>
+        <button class="icon" id="next-game" type="button" aria-label="Next game" title="Next game"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 3h2v10h-2zM3 3v10l7-5z"/></svg></button>
+        <input id="scrub" type="range" min="0" max="0" value="0" aria-label="Position in this game">
+        <span class="counter" id="counter"></span>
+        <label class="speed">
+          <span class="visually-hidden">Playback speed</span>
+          <select id="speed">
+            <option value="1">1&times;</option>
+            <option value="4" selected>4&times;</option>
+            <option value="16">16&times;</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog id="how" aria-labelledby="how-title">
+  <h2 id="how-title">How it works</h2>
+  <ol class="steps">
+    <li><strong>Lock.</strong> Your message is encrypted with AES-256, a standard and heavily studied cipher.
+      The key is made from your password by a deliberately slow recipe (scrypt), so guessing
+      passwords is painfully slow.</li>
+    <li><strong>One big number.</strong> The locked bytes are read as a single enormous number.</li>
+    <li><strong>Moves.</strong> In every chess position the legal moves are sorted and numbered.
+      If there are 20 of them, the number is divided by 20 and the remainder picks the move.
+      Then the next position takes the next bite. Point at the numbered moves under the board to
+      see this happen.</li>
+    <li><strong>Back again.</strong> The receiver replays the games, reads off which numbered
+      move was played each time, rebuilds the big number and unlocks it with the password.</li>
+  </ol>
+  <h3>What to know before you trust it</h3>
+  <ul class="steps">
+    <li>In the random style the moves come straight from scrambled data, so the games are
+      full of blunders. In our tests a simple program told them apart from real games more
+      than 99% of the time.</li>
+    <li>The natural style only plays moves a chess engine rates highly, and prefers the better
+      ones about as often as people do. That is far more convincing, but the desktop version
+      of this style was still spotted about three times in four. Treat the chess as a
+      disguise against a casual glance, not against an expert.</li>
+    <li>Nobody can read the message without the password, disguise or no disguise. Use a long
+      one: anyone who guesses it can read everything.</li>
+    <li>Change even one move and the message refuses to open, rather than opening wrongly.</li>
+  </ul>
+  <button class="primary" id="how-close" type="button">Got it</button>
+</dialog>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
