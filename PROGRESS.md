@@ -11,7 +11,7 @@
 - **Website** — `web/`: JavaScript port (crypto, codec, rankers), 3D board that shows which numbered move the data picked, "random" and "natural" (Stockfish in WebAssembly) styles, cross-tests against Python in `tests/test_web.py`, GitHub Pages workflow. Committed.
 
 ## In progress
-- Nothing. The site is live at https://pratham-90.github.io/chess-stego/ (repository: https://github.com/Pratham-90/chess-stego). Still untried: Firefox, Safari and a real phone.
+- Nothing. The site is live at https://pratham-90.github.io/chess-stego/ (repository: https://github.com/Pratham-90/chess-stego). Checked on the live site in Chromium, Firefox and WebKit (Safari's engine) at desktop and phone sizes. Still untried: Safari itself on a Mac or iPhone, and any physical phone.
 
 ## Possible next steps
 - See "Ideas for next steps" in `EXPLANATION.md`.

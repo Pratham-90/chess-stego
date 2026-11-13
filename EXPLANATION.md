@@ -583,10 +583,18 @@ interesting side result: the full-size WebAssembly build ranked moves exactly
 like the desktop Stockfish 19 on all 60 positions I compared, so a
 CLI-compatible website is possible at the cost of a 99 MB download.
 
-**What was not checked.** The site was tested with automated checks under
-Node.js and by hand in one Chromium-based browser. It has not been tried in
-Firefox or Safari, or on a real phone. How detectable the website's natural
-games are was not measured either: the 77% figure in section 5 belongs to the
-desktop engine.
+**How it was checked.** Besides the automated tests under Node.js, the live
+site was run in three browser engines: Chromium 158, Firefox 160 and WebKit
+27.2 (the engine inside Safari), plus iPhone and Pixel screen sizes. Both
+styles hide and reveal correctly in each. Natural-style games made in any one
+of the three decode in the other two, so the engine really does rank moves
+identically across browsers. This testing also caught a real bug: the
+password step sent 10,000 progress messages, which made Safari's engine about
+12 times slower until the messages were throttled.
+
+**What was not checked.** WebKit was a test build on Windows, not Safari on
+a Mac or iPhone, and no physical phone was used. How detectable the website's
+natural games are was not measured: the 77% figure in section 5 belongs to
+the desktop engine.
 
 See [web/README.md](web/README.md) for the file list and how to publish it.

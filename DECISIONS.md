@@ -69,3 +69,6 @@ Choices made while building, each with a one-line reason.
 - **No password confirmation field; a "Show" button instead** — one field is quicker and the user can check what they typed.
 - **Published with GitHub Pages from a public repository** (https://pratham-90.github.io/chess-stego/) — free static hosting; the workflow uploads only `web/`. Free-plan Pages requires the repository to be public.
 - **Commits use the owner's GitHub no-reply address** — the six commits were rewritten before the first push so a personal email address is not exposed in a public history; the repository's local `user.email` is set to the same address.
+- **Progress messages from the worker are throttled to 1% steps** — scrypt calls back about 10,000 times; forwarding each one made the password step take 4.6 s in WebKit instead of 0.4 s. Found by timing the phases in each browser.
+- **The idle board sways about 20 degrees instead of spinning** — after a minute of full rotation the board was side-on while a game played.
+- **Cross-browser testing used Playwright (Chromium, WebKit) and Selenium (Firefox), kept outside the repository** — one-off checks against the live site; Playwright's own Firefox build would not start on this Windows machine, so real Firefox was driven through Selenium instead.

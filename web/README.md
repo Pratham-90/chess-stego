@@ -71,6 +71,13 @@ python -m pytest tests/test_web.py    # JavaScript against the Python version
 games in both languages, that each side decodes the other's files, and that
 the natural style decodes in a separate process.
 
+## Browsers
+
+Checked on the live site: Chromium 158, Firefox 160 and WebKit 27.2 (the
+engine inside Safari), at desktop size and at iPhone 14 / Pixel 7 screen
+sizes. Natural-style games made in any one of these decode in the other two.
+Not checked: Safari itself on macOS or iOS, and physical phones.
+
 ## Putting it online
 
 The folder is a plain static site, so any static host works.
