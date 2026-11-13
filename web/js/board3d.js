@@ -274,6 +274,14 @@ export class Board3D {
   }
 
   #frame(time) {
+    // The idle motion is a slow sway of about 20 degrees each way, not a
+    // full spin: the board should never end up side-on while a game plays.
+    if (this.controls.autoRotate) {
+      this.homeAngle ??= this.controls.getAzimuthalAngle();
+      const offset = Math.abs(this.controls.getAzimuthalAngle() - this.homeAngle);
+      if (offset > 0.35 && offset > this.lastOffset) this.controls.autoRotateSpeed *= -1;
+      this.lastOffset = offset;
+    }
     this.controls.update();
     this.tweens = this.tweens.filter((tween) => !tween(time));
     this.renderer.render(this.scene, this.camera);
@@ -335,7 +343,7 @@ export class Board3D {
     this.#tween(duration, (t) => {
       const eased = t * t * (3 - 2 * t);
       mesh.position.lerpVectors(start, end, eased);
-      mesh.position.y = Math.sin(Math.PI * eased) * hop;
+      mesh.position.y = t < 1 ? Math.sin(Math.PI * eased) * hop : 0; // land exactly on the board
     }, onDone);
   }
 

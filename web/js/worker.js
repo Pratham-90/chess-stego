@@ -4,7 +4,17 @@ import { decode, encode, stats, toPgn, DecodeError } from "./codec.js";
 import { decrypt, encrypt, DecryptionError } from "./crypto.js";
 import { HumanRanker, UciRanker } from "./rankers.js";
 
-const progress = (stage) => (fraction) => postMessage({ type: "progress", stage, fraction });
+// Report progress to the page, at most once per 1% step. (scrypt alone calls
+// back about 10,000 times; sending every one made Safari several times slower.)
+function progress(stage) {
+  let reported = -1;
+  return (fraction) => {
+    const percent = Math.floor(fraction * 100);
+    if (percent === reported) return;
+    reported = percent;
+    postMessage({ type: "progress", stage, fraction });
+  };
+}
 
 const startRanker = (style) => (style === "natural" ? HumanRanker.start() : new UciRanker());
 
